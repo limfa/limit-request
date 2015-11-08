@@ -1,0 +1,12 @@
+{
+  "name": "limit-request",
+  "version": "1.0.0",
+  "description": "",
+  "main": "request.js",
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "iconv-lite": "*",
+    "request": "*"
+  }
+}
