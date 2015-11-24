@@ -5,10 +5,23 @@
 ## example
 ```javascript
 var request = new Request({
-    limitCount: 10,
+    // 限制请求数
+    limitCount : 10,
+    // 当前请求数
+    currentCount : 0,
+    // 已完成请求数
+    doneCount : 0,
+    // 总请求数
+    sumCount : 0,
+    // 超时时间
+    timeout : 30000,
+    // 允许累计错误次数
+    allowErrorCount : 3,
+    // 每条请求至少的间隔时间
+    requestInterval : 0,
 });      
-request.on('done' ,function(current,sum ,name){
-    console.log( Math.floor(current * 100 / sum) + '%' , name);
+request.on('done' ,function(name){
+    console.log(  Math.floor(request.doneCount * 100 / request.sumCount) + '%' , name);
 })
 .on('error' ,function(name ,type){
     console.log(type , name);
@@ -16,7 +29,21 @@ request.on('done' ,function(current,sum ,name){
 .on('fail' ,function(name){
     console.log('fail' , name);
 });
-request.getHtml({url : 'http://www.baidu.com/'})
+
+request.getHtml({
+    url: 'http://www.baidu.com/',
+    encoding: 'utf-8',
+}).then(res=>console.log(res.body) ,dumpError);
+
+request.saveImage({
+    src: 'http://www.baidu.com/img/bd_logo1.png',
+    stream: './images/baidu_logo.png',
+    progressClassback: ()=>process.stdout.write('.'),
+}).then(()=>console.log('success') ,dumpError);
+
+function dumpError(ex){ 
+    process.stderr.write(ex.stack); 
+}
 
 ```
 
