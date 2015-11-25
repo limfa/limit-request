@@ -50,9 +50,7 @@ var util = require('util');
 var fs = require('fs');
 var events = require('events');
 var request = require('request');
-// 扩展内部编码，让gbk得到支持
-// 高版本nodejs后，好像不适用了
-// require('iconv-lite').extendNodeEncodings();
+var iconv = require('iconv-lite');
 
 
 class SubRequest extends events.EventEmitter{
@@ -227,13 +225,17 @@ class Request extends events.EventEmitter{
         let priority = args.priority;
         delete args.priority;
         function fn(resolve, reject) {
+            let encoding = args.encoding || 'utf8';
             args.headers = args.headers || {
                 'User-Agent': 'Node',
             };
+            args.encoding = null;
             return request(args, (err, res, html)=>{
                 if(err) reject(err);
                 if(!res) reject('getHtml error: ' + args.url +' response is empty');
                 if(200 != res.statusCode){reject(new Error('读取失败'+res.statusCode)); }
+                // 转编码
+                res.body = iconv.decode(html, encoding);
                 resolve(res);
             });
         };
