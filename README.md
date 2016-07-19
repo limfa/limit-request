@@ -37,16 +37,27 @@ request.on('done' ,function(name){
     console.log('fail' , name);
 });
 
+// 获取HTML
 request.getHtml({
-    url: 'http://www.baidu.com/',
-    encoding: 'utf-8',
-}).then(res=>console.log(res.body) ,dumpError);
+    url: 'http://www.sina.com.cn/',
+    encoding: 'gbk',
+}).then(res=>{
+    console.log(res.body);
+    return request.getHtml({
+        url: 'http://www.google.com/',
+    });
+}).then(res=>{
+    console.log(res.body);
+}).catch(dumpError);
 
+// 获取保存图片
 request.saveImage({
     src: 'http://www.baidu.com/img/bd_logo1.png',
     stream: './images/baidu_logo.png',
     progressClassback: ()=>process.stdout.write('.'),
-}).then(()=>console.log('success') ,dumpError);
+}).then(()=>{
+    console.log('success');
+}).catch(dumpError);
 
 function dumpError(ex){ 
     process.stderr.write(ex.stack); 
