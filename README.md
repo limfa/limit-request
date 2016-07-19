@@ -2,6 +2,13 @@
 ====
 [流程图](https://www.processon.com/view/link/55ed3625e4b012a2db1de579)
 
+## 功能
+
+* 限制并发请求数
+* 间隔请求
+* 请求失败重新请求 可限制错误次数
+* 超时时间
+
 ## example
 ```javascript
 var request = new Request({

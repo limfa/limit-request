@@ -4,7 +4,7 @@
  * @流程图
  *     https://www.processon.com/view/link/55ed3625e4b012a2db1de579
  * @example
- *      var request = new Request({
+ *      let request = new Request({
  *          // 限制请求数
  *          limitCount : 10,
  *          // 当前请求数
@@ -46,11 +46,11 @@
  *      }
  */
 
-var util = require('util');
-var fs = require('fs');
-var events = require('events');
-var request = require('request');
-var iconv = require('iconv-lite');
+const util = require('util');
+const fs = require('fs');
+const events = require('events');
+const request = require('request');
+const iconv = require('iconv-lite');
 
 
 class SubRequest extends events.EventEmitter{
