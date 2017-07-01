@@ -226,7 +226,7 @@ class Request extends events.EventEmitter{
                 args.stream = fs.createWriteStream(args.dist);
             }
             let pipe = request.get({
-                url: args.src,
+                url: fixUrl(args.src),
             });
             if(args.progressCallback){
                 pipe.on('data' ,args.progressCallback);
@@ -269,6 +269,7 @@ class Request extends events.EventEmitter{
                 'User-Agent': 'Node',
             };
             args.encoding = null;
+            args.url = fixUrl(args.url);
             return request(args, (err, res, html)=>{
                 if(err) return reject(err);
                 if(!res) return reject('getHtml error: ' + args.url +' response is empty');
@@ -320,3 +321,8 @@ class Request extends events.EventEmitter{
 
 
 module.exports = Request;
+
+// 纠正url中带中文字符
+function fixUrl(url){
+    return url.replace(/[^\x00-\xff]/g, v=>encodeURI(v));
+}
