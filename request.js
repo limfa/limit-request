@@ -75,12 +75,27 @@ class SubRequest extends events.EventEmitter{
             if(args.hasOwnProperty(k) && this.hasOwnProperty(k) && args[k] !== void 0) this[k] = args[k];
         }
         this.mainRequest = mainRequest;
-        // this.resolve;
-        // this.reject;
+        this.init();
+    }
+
+    init(){
+        // 状态 pending resolved rejected
+        this.status = 'pending';
         this.promise = new Promise((resolve ,reject)=>{
-            this.resolve = resolve;
-            this.reject = reject;
+            this.resolve = (...arg)=>{
+                if(this.status != 'pending') throw new Error(`status error`);
+                this.status = 'resolved';
+                resolve(...arg);
+            };
+            this.reject = (...arg)=>{
+                if(this.status != 'pending') throw new Error(`status error`);
+                this.status = 'rejected';
+                reject(...arg);
+            };
         });
+        // 注入当前对象
+        this.promise.limitRequest = this;
+        return this;
     }
 
     /**
@@ -100,14 +115,36 @@ class SubRequest extends events.EventEmitter{
                 // if(async) return async;
             } ,this.mainRequest.timeout);
         });
-        promise.then(()=>{
+        promise.then((...arg)=>{
             clearTimeout(timer);
-        } ,()=>{
+            this.resolve(...arg);
+        } ,(type)=>{
             clearTimeout(timer);
             ++this.errorCount;
+
+            if(this.errorCount > this.mainRequest.allowErrorCount){
+                this.reject(type);
+                this.mainRequest.emit('fail' ,this.name);
+            }else{
+                // 重新回到队列尾部
+                this.mainRequest.queue.push(this);
+                this.mainRequest.emit('error' ,this.name ,type);
+            }
         });
-        this.mainRequest.emit('request' ,this.name);
         return promise;
+    }
+
+    // 重新回到队列尾部并初始化
+    comeback(anew = false){
+        if(this.status == 'pending') throw new Error(`status error`);
+        if(anew === true) this.errorCount = 0;
+        if(this.errorCount > this.mainRequest.allowErrorCount) throw new Error(`error limit`);
+        this.init();
+        this.mainRequest.queue.push(this);
+        process.nextTick(()=>{
+            this.mainRequest.start();
+        });
+        return this.promise;
     }
 }
 
@@ -188,7 +225,9 @@ class Request extends events.EventEmitter{
             if(!args.stream){
                 args.stream = fs.createWriteStream(args.dist);
             }
-            let pipe = request.get(args.src);
+            let pipe = request.get({
+                url: args.src,
+            });
             if(args.progressCallback){
                 pipe.on('data' ,args.progressCallback);
             }
@@ -231,9 +270,9 @@ class Request extends events.EventEmitter{
             };
             args.encoding = null;
             return request(args, (err, res, html)=>{
-                if(err) reject(err);
-                if(!res) reject('getHtml error: ' + args.url +' response is empty');
-                if(200 != res.statusCode){reject(new Error('读取失败'+res.statusCode)); }
+                if(err) return reject(err);
+                if(!res) return reject('getHtml error: ' + args.url +' response is empty');
+                if(200 != res.statusCode) return reject(new Error('读取失败'+res.statusCode)); 
                 // 转编码
                 res.body = iconv.decode(html, encoding);
                 resolve(res);
@@ -262,26 +301,18 @@ class Request extends events.EventEmitter{
         ++this.currentCount;
         this._lastRequestTime = Date.now();
         let subrequest = this.queue.shift();
-        subrequest.request().then(arg=>{
+        subrequest.request().then(()=>{
             --this.currentCount;
             ++this.doneCount;
 
-            subrequest.resolve(arg);
             this.emit('done' ,subrequest.name);
 
             this.start();
-        } ,type=>{
-            if(subrequest.errorCount > this.allowErrorCount){
-                subrequest.reject();
-                this.emit('fail' ,subrequest.name);
-            }else{
-                this.queue.push(subrequest);
-                this.emit('error' ,subrequest.name ,type);
-            }
-
+        } ,()=>{
             --this.currentCount;
             this.start();
         });
+        this.emit('request' ,subrequest.name);
 
         this.start();
     }
