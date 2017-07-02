@@ -105,7 +105,7 @@ class SubRequest extends events.EventEmitter{
     request(){
         let timer;
         let promise = new Promise((resolve ,reject)=>{
-            let async = this.fn(resolve ,reject);
+            let async = this._async = this.fn(resolve ,reject);
             timer = setTimeout(()=>{
                 // 取消请求
                 try{
@@ -138,7 +138,9 @@ class SubRequest extends events.EventEmitter{
     comeback(anew = false){
         if(this.status == 'pending') throw new Error(`status error`);
         if(anew === true) this.errorCount = 0;
-        if(this.errorCount > this.mainRequest.allowErrorCount) throw new Error(`error limit`);
+        // 视为错误
+        ++this.errorCount;
+        if(this.errorCount > this.mainRequest.allowErrorCount) return Promise.reject(`error limit`);
         this.init();
         this.mainRequest.queue.push(this);
         process.nextTick(()=>{
@@ -155,6 +157,7 @@ class Request extends events.EventEmitter{
     constructor(settings){
         super();
 
+        this.encoding = 'utf-8';
         // 限制请求数
         this.limitCount = 10;
         // 当前请求数
@@ -214,35 +217,49 @@ class Request extends events.EventEmitter{
     /**
      * 保存图片 并返回promise
      * @param  {Object} args 参数
-     *                       @key {String}  src  请求图片的链接
-     *                       @key {String}  dist  保存的路径 options  ;dist和stream二选一,优先stream
-     *                       @key {String}  stream  保存的流 options  ;dist和stream二选一,优先stream
-     *                       @key {String}  progressCallback  下载中回调
+     *     @key {String}  src  请求图片的链接
+     *     @key {Stream}  stream  保存的流 options  
+     *     @key {String}  dist  保存的路径 options  
+     *     @key {Function<Promise(Stream)>}  getStream  获取保存的流 options  
+     *     @key {Function}  progressCallback  下载中回调
+     *     @key {Object}  params  request的参数 see https://github.com/request/request
      * @return {Promise} 返回请求的Prosime对象
      */
     saveImage(args){
         function fn(resolve, reject) {
+            let p = Promise.resolve();
             if(!args.stream){
-                args.stream = fs.createWriteStream(args.dist);
+                if(args.dist){
+                    args.stream = fs.createWriteStream(args.dist);
+                }else if(args.getStream){
+                    p = args.getStream().then(stream=>{
+                        args.stream = stream;
+                    });
+                }
             }
-            let pipe = request.get({
+
+            const requestArgs = Object.assign(args.params || {}, {
                 url: fixUrl(args.src),
             });
+            let pipe = request.get(requestArgs);
             if(args.progressCallback){
                 pipe.on('data' ,args.progressCallback);
             }
-            // 在一些场景下 close 事件有效 ，而在有些下 end 有效？
-            args.stream.on('close' ,resolve).on('end' ,resolve);
 
-            pipe.on('error' ,function(e){
-                console.log('pipe error: ' + args.src + ' with the error: ' + e);
-                reject('pipe error: ' + args.src + ' with the error: ' + e);
+            p.then(()=>{
+                if(!args.stream) return reject(`param error: not found "args.stream"`);
+
+                // 在一些场景下 close 事件有效 ，而在有些下 end 有效？
+                args.stream.on('close' ,resolve).on('end' ,resolve);
+
+                pipe.on('error' ,function(e){
+                    reject(`pipe error: "${args.src}" with the error: ${e.stack}`);
+                });
+                args.stream.on('error' ,function(e){
+                    reject(`stream error: "${args.src}" with the error: ${e.stack}`);
+                });
+                pipe.pipe(args.stream);
             });
-            args.stream.on('error' ,function(e){
-                console.log('stream error: ' + args.src + ' with the error: ' + e);
-                reject('stream error: ' + args.src + ' with the error: ' + e);
-            });
-            pipe.pipe(args.stream);
             return pipe;
         };
         return this.add({
@@ -264,7 +281,7 @@ class Request extends events.EventEmitter{
         let priority = args.priority;
         delete args.priority;
         function fn(resolve, reject) {
-            let encoding = args.encoding || 'utf8';
+            let encoding = args.encoding || this.encoding;
             args.headers = args.headers || {
                 'User-Agent': 'Node',
             };
@@ -275,7 +292,11 @@ class Request extends events.EventEmitter{
                 if(!res) return reject('getHtml error: ' + args.url +' response is empty');
                 if(200 != res.statusCode) return reject(new Error('读取失败'+res.statusCode)); 
                 // 转编码
-                res.body = iconv.decode(html, encoding);
+                try{
+                    res.body = iconv.decode(html, encoding);
+                }catch(ex){
+                    console.warn(ex.stack);
+                }
                 resolve(res);
             });
         };
@@ -302,18 +323,18 @@ class Request extends events.EventEmitter{
         ++this.currentCount;
         this._lastRequestTime = Date.now();
         let subrequest = this.queue.shift();
-        subrequest.request().then(()=>{
+        subrequest.request().then((res)=>{
             --this.currentCount;
             ++this.doneCount;
 
-            this.emit('done' ,subrequest.name);
+            this.emit('done' ,subrequest.name, res);
 
             this.start();
         } ,()=>{
             --this.currentCount;
             this.start();
         });
-        this.emit('request' ,subrequest.name);
+        this.emit('request' ,subrequest.name, subrequest);
 
         this.start();
     }
