@@ -242,6 +242,13 @@ class Request extends events.EventEmitter{
                 url: fixUrl(args.src),
             });
             let pipe = request.get(requestArgs);
+            pipe.on('response', res=>{
+                // 获取图片404处理
+                if(res.statusCode != 200){
+                    pipe.abort();
+                    reject(new Error(`request "${args.src}" fail with status code "${res.statusCode}"`));
+                }
+            });
             if(args.progressCallback){
                 pipe.on('data' ,args.progressCallback);
             }
@@ -327,6 +334,7 @@ class Request extends events.EventEmitter{
             --this.currentCount;
             ++this.doneCount;
 
+            // res 并不一定存在
             this.emit('done' ,subrequest.name, res);
 
             this.start();
