@@ -228,17 +228,18 @@ class Request extends events.EventEmitter{
     saveImage(args){
         function fn(resolve, reject) {
             let p = Promise.resolve();
-            if(!args.stream){
+            let stream = args.stream;
+            if(!stream){
                 if(args.dist){
-                    args.stream = fs.createWriteStream(args.dist);
+                    stream = fs.createWriteStream(args.dist);
                 }else if(args.getStream){
-                    p = args.getStream().then(stream=>{
-                        args.stream = stream;
+                    p = args.getStream().then(_stream=>{
+                        stream = _stream;
                     });
                 }
             }
 
-            const requestArgs = Object.assign(args.params || {}, {
+            const requestArgs = Object.assign({}, args.params || {}, {
                 url: fixUrl(args.src),
             });
             let pipe = request.get(requestArgs);
@@ -254,18 +255,18 @@ class Request extends events.EventEmitter{
             }
 
             p.then(()=>{
-                if(!args.stream) return reject(`param error: not found "args.stream"`);
+                if(!stream) return reject(`param error: not found "args.stream"`);
 
                 // 在一些场景下 close 事件有效 ，而在有些下 end 有效？
-                args.stream.on('close' ,resolve).on('end' ,resolve);
+                stream.on('close' ,resolve).on('end' ,resolve);
 
                 pipe.on('error' ,function(e){
                     reject(`pipe error: "${args.src}" with the error: ${e.stack}`);
                 });
-                args.stream.on('error' ,function(e){
+                stream.on('error' ,function(e){
                     reject(`stream error: "${args.src}" with the error: ${e.stack}`);
                 });
-                pipe.pipe(args.stream);
+                pipe.pipe(stream);
             });
             return pipe;
         };
@@ -284,10 +285,11 @@ class Request extends events.EventEmitter{
      * @return {Promise} 返回请求的Prosime对象
      *         @d  resolve 带html参数
      */
-    getHtml(args) {
-        let priority = args.priority;
-        delete args.priority;
+    getHtml(_args = {}) {
+        let priority = _args.priority;
+        delete _args.priority;
         function fn(resolve, reject) {
+            let args = Object.assign({}, _args);
             let encoding = args.encoding || this.encoding;
             args.headers = args.headers || {
                 'User-Agent': 'Node',
@@ -308,7 +310,7 @@ class Request extends events.EventEmitter{
             });
         };
         return this.add({
-            name: args.url,
+            name: _args.url,
             priority: priority,
         } ,fn);
     }
