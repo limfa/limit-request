@@ -175,7 +175,7 @@ class Request extends events.EventEmitter{
         // 每条请求至少的间隔时间
         this.requestInterval = 0;
         // 上一次请求时间
-        this._lastRequestTime = null;
+        this._lastRequestTime = 0;
         // 定时请求
         this._timer = null;
 
@@ -248,6 +248,11 @@ class Request extends events.EventEmitter{
                 if(res.statusCode != 200){
                     pipe.abort();
                     reject(new Error(`request "${args.src}" fail with status code "${res.statusCode}"`));
+                }
+                // 非图片处理
+                if(('content-type' in res.headers) && !/^image\//.test(res.headers['content-type'])){
+                    pipe.abort();
+                    reject(new Error(`request "${args.src}" fail with content type "${res.headers['content-type']}"`));
                 }
             });
             if(args.progressCallback){
