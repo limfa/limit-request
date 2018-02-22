@@ -293,7 +293,7 @@ class Request extends events.EventEmitter{
     getHtml(_args = {}) {
         let priority = _args.priority;
         delete _args.priority;
-        function fn(resolve, reject) {
+        let fn = (resolve, reject)=>{
             let args = Object.assign({}, _args);
             let encoding = args.encoding || this.encoding;
             args.headers = args.headers || {
