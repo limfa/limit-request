@@ -328,7 +328,7 @@ class Request extends events.EventEmitter{
             return request(args, (err, res, html)=>{
                 if(err) return reject(err);
                 if(!res) return reject('getHtml error: ' + args.url +' response is empty');
-                if(200 != res.statusCode) return reject(new Error('读取失败'+res.statusCode)); 
+                if(200 != res.statusCode) return reject(new Error('invalid status code: '+res.statusCode)); 
                 // 转编码
                 try{
                     res.body = iconv.decode(html, encoding);
