@@ -215,17 +215,21 @@ class Request extends events.EventEmitter{
     }
 
     /**
-     * 保存图片 并返回promise
+     * stream save 并返回promise
      * @param  {Object} args 参数
      *     @key {String}  src  请求图片的链接
+     *     
+     *     3选1    
      *     @key {Stream}  stream  保存的流 options  
      *     @key {String}  dist  保存的路径 options  
      *     @key {Function<Promise(Stream)>}  getStream  获取保存的流 options  
+     *
      *     @key {Function}  progressCallback  下载中回调
      *     @key {Object}  params  request的参数 see https://github.com/request/request
+     * @param  {Function} filterCallback 过滤处理器
      * @return {Promise} 返回请求的Prosime对象
      */
-    saveImage(args){
+    saveStream(args, filterCallback){
         function fn(resolve, reject) {
             let p = Promise.resolve();
             let stream = args.stream;
@@ -249,11 +253,7 @@ class Request extends events.EventEmitter{
                     pipe.abort();
                     reject(new Error(`request "${args.src}" fail with status code "${res.statusCode}"`));
                 }
-                // 非图片处理
-                if(('content-type' in res.headers) && !/^image\//.test(res.headers['content-type'])){
-                    pipe.abort();
-                    reject(new Error(`request "${args.src}" fail with content type "${res.headers['content-type']}"`));
-                }
+                if(filterCallback) filterCallback(res, pipe, reject)
             });
             if(args.progressCallback){
                 pipe.on('data' ,args.progressCallback);
@@ -279,7 +279,31 @@ class Request extends events.EventEmitter{
             name: args.src,
             priority: args.priority,
         } ,fn);
-    };
+    }
+
+    /**
+     * stream save 并返回promise
+     * @param  {Object} args 参数
+     *     @key {String}  src  请求图片的链接
+     *     
+     *     3选1    
+     *     @key {Stream}  stream  保存的流 options  
+     *     @key {String}  dist  保存的路径 options  
+     *     @key {Function<Promise(Stream)>}  getStream  获取保存的流 options  
+     *
+     *     @key {Function}  progressCallback  下载中回调
+     *     @key {Object}  params  request的参数 see https://github.com/request/request
+     * @return {Promise} 返回请求的Prosime对象
+     */
+    saveImage(args){
+        return this.saveStream(args, (res, pipe, reject)=>{
+            // 非图片处理
+            if(('content-type' in res.headers) && !/^image\//.test(res.headers['content-type'])){
+                pipe.abort();
+                reject(new Error(`request "${args.src}" fail with content type "${res.headers['content-type']}"`));
+            }
+        })
+    }
 
     /**
      * 获取html 返回promise
