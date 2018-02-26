@@ -336,6 +336,8 @@ class Request extends events.EventEmitter{
                     }catch(ex){
                         console.warn(ex.stack);
                     }
+                }else{
+                    res.body = res.body.toString()
                 }
                 resolve(res);
             });
