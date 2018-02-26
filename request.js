@@ -282,7 +282,7 @@ class Request extends events.EventEmitter{
     }
 
     /**
-     * stream save 并返回promise
+     * image save 并返回promise
      * @param  {Object} args 参数
      *     @key {String}  src  请求图片的链接
      *     
@@ -319,7 +319,7 @@ class Request extends events.EventEmitter{
         delete _args.priority;
         let fn = (resolve, reject)=>{
             let args = Object.assign({}, _args);
-            let encoding = args.encoding || this.encoding;
+            let encoding = 'encoding' in args? args.encoding: this.encoding;
             args.headers = args.headers || {
                 'User-Agent': 'Node',
             };
@@ -330,10 +330,12 @@ class Request extends events.EventEmitter{
                 if(!res) return reject('getHtml error: ' + args.url +' response is empty');
                 if(200 != res.statusCode) return reject(new Error('invalid status code: '+res.statusCode)); 
                 // 转编码
-                try{
-                    res.body = iconv.decode(html, encoding);
-                }catch(ex){
-                    console.warn(ex.stack);
+                if(encoding){
+                    try{
+                        res.body = iconv.decode(html, encoding);
+                    }catch(ex){
+                        console.warn(ex.stack);
+                    }
                 }
                 resolve(res);
             });
