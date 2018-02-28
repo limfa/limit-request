@@ -51,6 +51,7 @@ const fs = require('fs');
 const events = require('events');
 const request = require('request');
 const iconv = require('iconv-lite');
+const fileType = require('file-type');
 
 
 class SubRequest extends events.EventEmitter{
@@ -329,6 +330,8 @@ class Request extends events.EventEmitter{
                 if(err) return reject(err);
                 if(!res) return reject('getHtml error: ' + args.url +' response is empty');
                 if(200 != res.statusCode) return reject(new Error('invalid status code: '+res.statusCode)); 
+                const ft = fileType(res.body)
+                if(ft) return reject(new Error(`invalid file type (no text): "${ft.mime}"`)); 
                 // 转编码
                 if(encoding){
                     try{

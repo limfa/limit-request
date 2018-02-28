@@ -6,6 +6,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "file-type": "^7.6.0",
     "iconv-lite": "*",
     "request": "*"
   }
