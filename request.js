@@ -76,6 +76,7 @@ class SubRequest extends events.EventEmitter{
             if(args.hasOwnProperty(k) && this.hasOwnProperty(k) && args[k] !== void 0) this[k] = args[k];
         }
         this.mainRequest = mainRequest;
+        this.promise = null;
         this.init();
     }
 
@@ -135,13 +136,14 @@ class SubRequest extends events.EventEmitter{
         return promise;
     }
 
+    // 获取到内容，认为内容是错的，使其加入队列重新请求
     // 重新回到队列尾部并初始化
     comeback(anew = false){
-        if(this.status == 'pending') throw new Error(`status error`);
+        if(this.status == 'pending') return Promise.reject(new Error(`"${this.status}" status not allow comeback`));
         if(anew === true) this.errorCount = 0;
         // 视为错误
         ++this.errorCount;
-        if(this.errorCount > this.mainRequest.allowErrorCount) return Promise.reject(`error limit`);
+        if(this.errorCount > this.mainRequest.allowErrorCount) return Promise.reject(new Error(`error count "${this.errorCount}" more than allow error count "${this.mainRequest.allowErrorCount}"`));
         this.init();
         this.mainRequest.queue.push(this);
         process.nextTick(()=>{
@@ -158,7 +160,7 @@ class Request extends events.EventEmitter{
     constructor(settings){
         super();
 
-        this.encoding = 'utf-8';
+        this.encoding = null;
         // 限制请求数
         this.limitCount = 10;
         // 当前请求数
@@ -238,7 +240,7 @@ class Request extends events.EventEmitter{
                 if(args.dist){
                     stream = fs.createWriteStream(args.dist);
                 }else if(args.getStream){
-                    p = args.getStream().then(_stream=>{
+                    p = Promise.resolve(args.getStream()).then(_stream=>{
                         stream = _stream;
                     });
                 }
@@ -263,8 +265,7 @@ class Request extends events.EventEmitter{
             p.then(()=>{
                 if(!stream) return reject(`param error: not found "args.stream"`);
 
-                // 在一些场景下 close 事件有效 ，而在有些下 end 有效？
-                stream.on('close' ,resolve).on('end' ,resolve);
+                pipe.on('end', resolve)
 
                 pipe.on('error' ,function(e){
                     reject(`pipe error: "${args.src}" with the error: ${e.stack}`);
