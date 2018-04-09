@@ -1,2 +1,4 @@
 node_modules
 /.npminstall.done
+/.nyc_output
+/coverage

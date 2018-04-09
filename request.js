@@ -85,12 +85,16 @@ class SubRequest extends events.EventEmitter{
         this.status = 'pending';
         this.promise = new Promise((resolve ,reject)=>{
             this.resolve = (...arg)=>{
-                if(this.status != 'pending') throw new Error(`status error`);
+                if(this.status != 'pending') {
+                    throw new Error(`status error`);
+                }
                 this.status = 'resolved';
                 resolve(...arg);
             };
             this.reject = (...arg)=>{
-                if(this.status != 'pending') throw new Error(`status error`);
+                if(this.status != 'pending') {
+                    throw new Error(`status error`);
+                }
                 this.status = 'rejected';
                 reject(...arg);
             };
@@ -139,8 +143,12 @@ class SubRequest extends events.EventEmitter{
     // 获取到内容，认为内容是错的，使其加入队列重新请求
     // 重新回到队列尾部并初始化
     comeback(anew = false){
-        if(this.status == 'pending') return Promise.reject(new Error(`"${this.status}" status not allow comeback`));
-        if(anew === true) this.errorCount = 0;
+        if(this.status == 'pending') {
+            return Promise.reject(new Error(`"${this.status}" status not allow comeback`));
+        }
+        if(anew === true) {
+            this.errorCount = 0;
+        }
         // 视为错误
         ++this.errorCount;
         if(this.errorCount > this.mainRequest.allowErrorCount) return Promise.reject(new Error(`error count "${this.errorCount}" more than allow error count "${this.mainRequest.allowErrorCount}"`));
