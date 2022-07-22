@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "file-type": "7",
+    "file-type": "16",
     "iconv-lite": "0.6.2",
     "request": "2.88.2"
   },
